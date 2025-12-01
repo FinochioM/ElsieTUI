@@ -1,64 +1,54 @@
 const std = @import("std");
-const os = std.os;
-const linux = os.linux;
+const terminal = @import("terminal.zig");
 
-var original_termios: linux.termios = undefined;
+const TUI = struct {
+    rows: u16,
+    cols: u16,
+    running: bool,
+    frame_count: u32,
 
-fn enableRawMode() !void {
-    const stdin_fd = std.io.getStdIn().handle;
+    fn init() !TUI {
+        const size = try terminal.getSize();
+        return TUI{
+            .rows = size.rows,
+            .cols = size.cols,
+            .running = true,
+            .frame_count = 0,
+        };
+    }
 
-    _ = linux.tcgetattr(stdin_fd, &original_termios);
+    fn render(self: *TUI) void {
+        terminal.clearScreen();
+        terminal.moveCursor(1, 1);
+        std.debug.print("Terminal Size: {} rows, {} cols\r\n", .{ self.rows, self.cols });
+        std.debug.print("Press 'q' to quit\r\n", .{});
+        self.frame_count += 1;
+    }
 
-    var raw = original_termios;
-
-    raw.lflag &= ~@as(linux.tcflag_t, linux.ECHO | linux.ICANON);
-
-    raw.cc[linux.V.MIN] = 0;
-    raw.cc[linux.V.TIME] = 1;
-
-    _ = linux.tcsetattr(stdin_fd, .FLUSH, &raw);
-}
-
-fn disableRawMode() void {
-    const stdin_fd = std.io.getStdIn().handle;
-    _ = linux.tcsetattr(stdin_fd, .FLUSH, &original_termios);
-}
-
-fn clearScreen() void {
-    std.debug.print("\x1b[2J", .{});
-}
-
-fn moveCursor(row: u16, col: u16) void {
-    std.debug.print("\x1b[{};{}H", .{ row, col });
-}
-
-fn hideCursor() void {
-    std.debug.print("\x1b[?25l", .{});
-}
-
-fn showCursor() void {
-    std.debug.print("\x1b[?25h", .{});
-}
+    fn handleInput(self: *TUI, c: u8) void {
+        if (c == 'q') {
+            self.running = false;
+        }
+    }
+};
 
 pub fn main() !void {
-    try enableRawMode();
-    defer disableRawMode();
-    defer showCursor();
+    try terminal.enableRawMode();
+    defer terminal.disableRawMode();
+    defer terminal.showCursor();
 
-    clearScreen();
-    hideCursor();
+    terminal.hideCursor();
 
-    moveCursor(1, 1);
-    std.debug.print("Press 'q' to quit\r\n", .{});
-
-    moveCursor(10, 5);
-    std.debug.print("Position (10, 5)\r\n", .{});
-
+    var tui = try TUI.init();
     const stdin = std.io.getStdIn().reader();
-    while (true) {
+
+    while (tui.running) {
+        tui.render();
+
         var buf: [1]u8 = undefined;
         const bytes_read = try stdin.read(&buf);
-
-        if (bytes_read > 0 and buf[0] == 'q') break;
+        if (bytes_read > 0) {
+            tui.handleInput(buf[0]);
+        }
     }
 }
