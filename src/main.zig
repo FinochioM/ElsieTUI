@@ -28,17 +28,31 @@ const TUI = struct {
 
     fn render(self: *TUI) !void {
         self.buffer.clear();
-
         try self.buffer.write("\x1b[2J");
 
+        // main
+        try self.buffer.write("\x1b[36m"); // cyan color
         const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = self.cols, .height = self.rows }, "ElsieTUI");
         try main_box.draw(&self.buffer);
 
+        // info
+        try self.buffer.write("\x1b[32m");
         const info_box = widget.Box.init(widget.Rect{ .x = 3, .y = 3, .width = 40, .height = 5 }, "Info");
         try info_box.draw(&self.buffer);
 
-        try self.buffer.writeFmt("\x1b[4;5HTerminal: {}x{}", .{ self.rows, self.cols });
-        try self.buffer.write("\x1b[5;5HPress 'q' to quit");
+        // text
+        try self.buffer.write("\x1b[0m");
+        const text1 = widget.Text.init(5, 4, "Terminal Size:");
+        try text1.draw(&self.buffer);
+
+        try self.buffer.write("\x1b[33m");
+        const text2 = widget.Text.init(20, 4, "{}x{}");
+        _ = text2;
+        try self.buffer.writeFmt("\x1b[20;4H{}x{}", .{ self.rows, self.cols });
+
+        try self.buffer.write("\x1b[0m");
+        const text3 = widget.Text.init(5, 5, "Press 'q' to quit");
+        try text3.draw(&self.buffer);
 
         self.buffer.flush();
         self.frame_count += 1;

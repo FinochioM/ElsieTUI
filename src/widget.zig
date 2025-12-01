@@ -57,3 +57,21 @@ pub const Box = struct {
         try buffer.write("┘");
     }
 };
+
+pub const Text = struct {
+    x: u16,
+    y: u16,
+    content: []const u8,
+
+    pub fn init(x: u16, y: u16, content: []const u8) Text {
+        return Text{
+            .x = x,
+            .y = y,
+            .content = content,
+        };
+    }
+
+    pub fn draw(self: Text, buffer: *Buffer) !void {
+        try buffer.writeFmt("\x1b[{};{}H{s}", .{ self.y, self.x, self.content });
+    }
+};
