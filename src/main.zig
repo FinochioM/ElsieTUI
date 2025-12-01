@@ -2,6 +2,7 @@ const std = @import("std");
 const terminal = @import("terminal.zig");
 const buffer_mod = @import("buffer.zig");
 const Buffer = buffer_mod.Buffer;
+const widget = @import("widget.zig");
 
 const TUI = struct {
     rows: u16,
@@ -28,9 +29,16 @@ const TUI = struct {
     fn render(self: *TUI) !void {
         self.buffer.clear();
 
-        try self.buffer.write("\x1b[2J\x1b[1;1H");
-        try self.buffer.writeFmt("Terminal Size: {} rows, {} cols\r\n", .{ self.rows, self.cols });
-        try self.buffer.write("Press 'q' to quit\r\n");
+        try self.buffer.write("\x1b[2J");
+
+        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = self.cols, .height = self.rows }, "ElsieTUI");
+        try main_box.draw(&self.buffer);
+
+        const info_box = widget.Box.init(widget.Rect{ .x = 3, .y = 3, .width = 40, .height = 5 }, "Info");
+        try info_box.draw(&self.buffer);
+
+        try self.buffer.writeFmt("\x1b[4;5HTerminal: {}x{}", .{ self.rows, self.cols });
+        try self.buffer.write("\x1b[5;5HPress 'q' to quit");
 
         self.buffer.flush();
         self.frame_count += 1;
