@@ -29,7 +29,7 @@ pub const Box = struct {
         if (self.title.len > 0 and self.title.len < w - 4) {
             try buffer.writeFmt(" {s} ", .{self.title});
             var i: u16 = @intCast(self.title.len + 2);
-            while (i < w - 1) : (i += 1) {
+            while (i < w - 2) : (i += 1) {
                 try buffer.write("─");
             }
         } else {

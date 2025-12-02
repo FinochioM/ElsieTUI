@@ -86,19 +86,27 @@ pub fn main() !void {
 
     const stdin = std.io.getStdIn().reader();
 
+    try tui.render();
+
     while (tui.running) {
+        var should_render = false;
+
         if (resize_flag) {
             try tui.updateSize();
             resize_flag = false;
+            should_render = true;
         }
-
-        try tui.render();
 
         var buf: [6]u8 = undefined;
         const bytes_read = try stdin.read(&buf);
         if (bytes_read > 0) {
             const key = @import("input.zig").parseKey(buf[0..bytes_read]);
             try tui.handleInput(key);
+            should_render = true;
+        }
+
+        if (should_render) {
+            try tui.render();
         }
     }
 }

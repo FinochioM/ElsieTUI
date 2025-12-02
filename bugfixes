@@ -1,2 +1,5 @@
 - The TUI does not work when resizing the terminal window. FIXED.
+- Right side border does not align with top border. FIXED.
+- Text renders ON TOP of border. FIXED (problem was from testing with menu.zig, not actual TUI framework)
+- The widgets jitter sometimess. FIXED.
 - The colors do not match in different terminals (vscode, ghostty, etc)

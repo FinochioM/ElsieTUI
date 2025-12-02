@@ -20,7 +20,7 @@ pub const MenuScene = struct {
 
         self.* = MenuScene{
             .allocator = allocator,
-            .list = widget.List.init(widget.Rect{ .x = 10, .y = 8, .width = 30, .height = 4 }, &items),
+            .list = widget.List.init(widget.Rect{ .x = 10, .y = 7, .width = 30, .height = 4 }, &items),
             .should_quit = false,
         };
 
