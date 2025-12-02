@@ -4,6 +4,8 @@ const buffer_mod = @import("buffer.zig");
 const Buffer = buffer_mod.Buffer;
 const widget = @import("widget.zig");
 const input = @import("input.zig");
+const os = std.os;
+const linux = os.linux;
 
 const TUI = struct {
     rows: u16,
@@ -29,6 +31,12 @@ const TUI = struct {
         self.text_input.deinit();
     }
 
+    fn updateSize(self: *TUI) !void {
+        const size = try terminal.getSize();
+        self.rows = size.rows;
+        self.cols = size.cols;
+    }
+
     fn render(self: *TUI) !void {
         self.buffer.clear();
         try self.buffer.write("\x1b[2J");
@@ -48,6 +56,7 @@ const TUI = struct {
         try self.buffer.write("\x1b[?25h");
 
         try self.buffer.write("\x1b[8;3HType to enter text, Backspace to delete, 'Esc' to quit");
+        try self.buffer.writeFmt("\x1b[9;3HTerminal: {}x{}", .{ self.rows, self.cols });
 
         self.buffer.flush();
     }
@@ -66,10 +75,23 @@ const TUI = struct {
     }
 };
 
+var resize_flag: bool = false;
+
+fn handleSigWinch(_: c_int) callconv(.C) void {
+    resize_flag = true;
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+
+    var sa = linux.Sigaction{
+        .handler = .{ .handler = handleSigWinch },
+        .mask = linux.empty_sigset,
+        .flags = 0,
+    };
+    _ = linux.sigaction(linux.SIG.WINCH, &sa, null);
 
     try terminal.enableRawMode();
     defer terminal.disableRawMode();
@@ -83,6 +105,11 @@ pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
 
     while (tui.running) {
+        if (resize_flag) {
+            try tui.updateSize();
+            resize_flag = false;
+        }
+
         try tui.render();
 
         var buf: [6]u8 = undefined;
