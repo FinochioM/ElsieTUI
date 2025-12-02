@@ -2,8 +2,9 @@ const std = @import("std");
 const terminal = @import("terminal.zig");
 const buffer_mod = @import("buffer.zig");
 const Buffer = buffer_mod.Buffer;
-const widget = @import("widget.zig");
-const input = @import("input.zig");
+const scene_mod = @import("scene.zig");
+const Scene = scene_mod.Scene;
+const MenuScene = @import("scenes/menu.zig").MenuScene;
 const os = std.os;
 const linux = os.linux;
 
@@ -12,23 +13,27 @@ const TUI = struct {
     cols: u16,
     running: bool,
     buffer: Buffer,
-    text_input: widget.TextInput,
+    current_scene: Scene,
+    menu_scene: *MenuScene,
 
     fn init(allocator: std.mem.Allocator) !TUI {
         const size = try terminal.getSize();
+
+        const menu_scene = try MenuScene.init(allocator);
 
         return TUI{
             .rows = size.rows,
             .cols = size.cols,
             .running = true,
             .buffer = Buffer.init(allocator),
-            .text_input = widget.TextInput.init(allocator, widget.Rect{ .x = 5, .y = 5, .width = 40, .height = 1 }),
+            .current_scene = Scene.init(menu_scene),
+            .menu_scene = menu_scene,
         };
     }
 
     fn deinit(self: *TUI) void {
         self.buffer.deinit();
-        self.text_input.deinit();
+        self.current_scene.deinit();
     }
 
     fn updateSize(self: *TUI) !void {
@@ -39,38 +44,15 @@ const TUI = struct {
 
     fn render(self: *TUI) !void {
         self.buffer.clear();
-        try self.buffer.write("\x1b[2J");
-
-        try self.buffer.write("\x1b[36m");
-        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = self.cols, .height = self.rows }, "ElsieTUI - Text Input Demo");
-        try main_box.draw(&self.buffer);
-
-        try self.buffer.write("\x1b[32m");
-        const input_box = widget.Box.init(widget.Rect{ .x = 3, .y = 3, .width = 50, .height = 4 }, "Enter Text");
-        try input_box.draw(&self.buffer);
-
-        try self.buffer.write("\x1b[0m");
-        try self.text_input.draw(&self.buffer);
-
-        try self.buffer.writeFmt("\x1b[{};{}H", .{ 5, 5 + self.text_input.cursor_pos });
-        try self.buffer.write("\x1b[?25h");
-
-        try self.buffer.write("\x1b[8;3HType to enter text, Backspace to delete, 'Esc' to quit");
-        try self.buffer.writeFmt("\x1b[9;3HTerminal: {}x{}", .{ self.rows, self.cols });
-
+        try self.current_scene.render(&self.buffer, self.rows, self.cols);
         self.buffer.flush();
     }
 
-    fn handleInput(self: *TUI, key: input.Key) !void {
-        switch (key) {
-            .Char => |c| {
-                try self.text_input.insertChar(c);
-            },
-            .Backspace => self.text_input.deleteChar(),
-            .ArrowLeft => self.text_input.moveCursorLeft(),
-            .ArrowRight => self.text_input.moveCursorRight(),
-            .Escape => self.running = false,
-            else => {},
+    fn handleInput(self: *TUI, key: anytype) !void {
+        try self.current_scene.handleInput(key);
+
+        if (self.menu_scene.shouldQuit()) {
+            self.running = false;
         }
     }
 };
@@ -115,7 +97,7 @@ pub fn main() !void {
         var buf: [6]u8 = undefined;
         const bytes_read = try stdin.read(&buf);
         if (bytes_read > 0) {
-            const key = input.parseKey(buf[0..bytes_read]);
+            const key = @import("input.zig").parseKey(buf[0..bytes_read]);
             try tui.handleInput(key);
         }
     }
