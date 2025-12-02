@@ -10,30 +10,23 @@ const TUI = struct {
     cols: u16,
     running: bool,
     buffer: Buffer,
-    list: widget.List,
+    text_input: widget.TextInput,
 
     fn init(allocator: std.mem.Allocator) !TUI {
         const size = try terminal.getSize();
-
-        const items = [_][]const u8{
-            "Option 1",
-            "Option 2",
-            "Option 3",
-            "Option 4",
-            "Option 5",
-        };
 
         return TUI{
             .rows = size.rows,
             .cols = size.cols,
             .running = true,
             .buffer = Buffer.init(allocator),
-            .list = widget.List.init(widget.Rect{ .x = 5, .y = 4, .width = 30, .height = 5 }, &items),
+            .text_input = widget.TextInput.init(allocator, widget.Rect{ .x = 5, .y = 5, .width = 40, .height = 1 }),
         };
     }
 
     fn deinit(self: *TUI) void {
         self.buffer.deinit();
+        self.text_input.deinit();
     }
 
     fn render(self: *TUI) !void {
@@ -41,30 +34,33 @@ const TUI = struct {
         try self.buffer.write("\x1b[2J");
 
         try self.buffer.write("\x1b[36m");
-        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = self.cols, .height = self.rows }, "ElsieTUI - List Demo");
+        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = self.cols, .height = self.rows }, "ElsieTUI - Text Input Demo");
         try main_box.draw(&self.buffer);
 
         try self.buffer.write("\x1b[32m");
-        const list_box = widget.Box.init(widget.Rect{ .x = 3, .y = 3, .width = 34, .height = 7 }, "Menu");
-        try list_box.draw(&self.buffer);
+        const input_box = widget.Box.init(widget.Rect{ .x = 3, .y = 3, .width = 50, .height = 4 }, "Enter Text");
+        try input_box.draw(&self.buffer);
 
         try self.buffer.write("\x1b[0m");
-        try self.list.draw(&self.buffer);
+        try self.text_input.draw(&self.buffer);
 
-        try self.buffer.write("\x1b[11;3HUse arrows to navigate, 'q' to quit");
+        try self.buffer.writeFmt("\x1b[{};{}H", .{ 5, 5 + self.text_input.cursor_pos });
+        try self.buffer.write("\x1b[?25h");
+
+        try self.buffer.write("\x1b[8;3HType to enter text, Backspace to delete, 'Esc' to quit");
 
         self.buffer.flush();
     }
 
-    fn handleInput(self: *TUI, key: input.Key) void {
+    fn handleInput(self: *TUI, key: input.Key) !void {
         switch (key) {
             .Char => |c| {
-                if (c == 'q') {
-                    self.running = false;
-                }
+                try self.text_input.insertChar(c);
             },
-            .ArrowUp => self.list.moveUp(),
-            .ArrowDown => self.list.moveDown(),
+            .Backspace => self.text_input.deleteChar(),
+            .ArrowLeft => self.text_input.moveCursorLeft(),
+            .ArrowRight => self.text_input.moveCursorRight(),
+            .Escape => self.running = false,
             else => {},
         }
     }
@@ -93,7 +89,7 @@ pub fn main() !void {
         const bytes_read = try stdin.read(&buf);
         if (bytes_read > 0) {
             const key = input.parseKey(buf[0..bytes_read]);
-            tui.handleInput(key);
+            try tui.handleInput(key);
         }
     }
 }

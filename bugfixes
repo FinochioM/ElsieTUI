@@ -1,0 +1,2 @@
+- The TUI does not work when resizing the terminal window.
+- The colors do not match in different terminals (vscode, ghostty, etc)

@@ -118,3 +118,62 @@ pub const List = struct {
         }
     }
 };
+
+pub const TextInput = struct {
+    rect: Rect,
+    content: std.ArrayList(u8),
+    cursor_pos: usize,
+
+    pub fn init(allocator: std.mem.Allocator, rect: Rect) TextInput {
+        return TextInput{
+            .rect = rect,
+            .content = std.ArrayList(u8).init(allocator),
+            .cursor_pos = 0,
+        };
+    }
+
+    pub fn deinit(self: *TextInput) void {
+        self.content.deinit();
+    }
+
+    pub fn draw(self: TextInput, buffer: *Buffer) !void {
+        const x = self.rect.x;
+        const y = self.rect.y;
+
+        try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
+        if (self.content.items.len > 0) {
+            try buffer.writeFmt("{s}", .{self.content.items});
+        }
+
+        try buffer.writeFmt("\x1b[{};{}H", .{ y, x + self.cursor_pos });
+    }
+
+    pub fn insertChar(self: *TextInput, c: u8) !void {
+        try self.content.insert(self.cursor_pos, c);
+        self.cursor_pos += 1;
+    }
+
+    pub fn deleteChar(self: *TextInput) void {
+        if (self.cursor_pos > 0 and self.content.items.len > 0) {
+            _ = self.content.orderedRemove(self.cursor_pos - 1);
+            self.cursor_pos -= 1;
+        }
+    }
+
+    pub fn moveCursorLeft(self: *TextInput) void {
+        if (self.cursor_pos > 0) {
+            self.cursor_pos -= 1;
+        }
+    }
+
+    pub fn moveCursorRight(self: *TextInput) void {
+        if (self.cursor_pos < self.content.items.len) {
+            self.cursor_pos += 1;
+        }
+    }
+
+    pub fn clear(self: *TextInput) void {
+        self.content.clearRetainingCapacity();
+        self.cursor_pos = 0;
+    }
+};
