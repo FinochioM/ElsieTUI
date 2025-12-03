@@ -1,7 +1,8 @@
 const std = @import("std");
-const Buffer = @import("../buffer.zig").Buffer;
 const widget = @import("../widget.zig");
 const input = @import("../input.zig");
+const style_mod = @import("../style.zig");
+const Buffer = @import("../buffer.zig").Buffer;
 const Color = @import("../color.zig").Color;
 
 pub const MenuScene = struct {
@@ -36,11 +37,11 @@ pub const MenuScene = struct {
         try buffer.write("\x1b[2J");
 
         try Color.Red.toFgEscape(buffer);
-        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu");
+        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu", style_mod.BorderStyle.verticalGradient(Color.Red, Color.Blue));
         try main_box.draw(buffer);
 
         try Color.BrightWhite.toFgEscape(buffer);
-        const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu");
+        const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", style_mod.BorderStyle.horizontalGradient(Color.Blue, Color.Cyan));
         try menu_box.draw(buffer);
 
         try buffer.write("\x1b[0m");
