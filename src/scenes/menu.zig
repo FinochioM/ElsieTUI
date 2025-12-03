@@ -46,6 +46,16 @@ pub const MenuScene = struct {
         try buffer.write("\x1b[0m");
         try self.list.draw(buffer);
 
+        const y_test: u16 = rows - 3;
+        var i: u16 = 10;
+        while (i < 50) : (i += 1) {
+            const t: f32 = @as(f32, @floatFromInt(i - 10)) / 40.0;
+            const gradient_color = Color.Red.lerp(Color.Blue, t);
+            try gradient_color.toFgEscape(buffer);
+            try buffer.writeFmt("\x1b[{};{}H█", .{ y_test, i });
+        }
+        try buffer.write("\x1b[0m");
+
         try buffer.write("\x1b[");
         try buffer.writeFmt("{}", .{rows - 1});
         try buffer.write(";3HArrows: Navigate | Enter: Select | Esc: Quit");

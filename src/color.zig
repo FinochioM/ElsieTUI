@@ -17,6 +17,16 @@ pub const Color = struct {
         try buffer.writeFmt("\x1b[48;2;{};{};{}m", .{ self.r, self.g, self.b });
     }
 
+    pub fn lerp(self: Color, other: Color, t: f32) Color {
+        const clamped_t = @max(0.0, @min(1.0, t));
+
+        return Color {
+            .r = @intFromFloat(@as(f32, @floatFromInt(self.r)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.r)) * clamped_t),
+            .g = @intFromFloat(@as(f32, @floatFromInt(self.g)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.g)) * clamped_t),
+            .b = @intFromFloat(@as(f32, @floatFromInt(self.b)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.b)) * clamped_t),
+        };
+    }
+
     // predefined
     pub const Black = rgb(0, 0, 0);
     pub const Red = rgb(205, 49, 49);
