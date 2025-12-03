@@ -2,6 +2,7 @@ const std = @import("std");
 const Buffer = @import("../buffer.zig").Buffer;
 const widget = @import("../widget.zig");
 const input = @import("../input.zig");
+const Color = @import("../color.zig").Color;
 
 pub const MenuScene = struct {
     allocator: std.mem.Allocator,
@@ -34,11 +35,11 @@ pub const MenuScene = struct {
     pub fn render(self: *MenuScene, buffer: *Buffer, rows: u16, cols: u16) !void {
         try buffer.write("\x1b[2J");
 
-        try buffer.write("\x1b[36m");
+        try Color.Red.toFgEscape(buffer);
         const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu");
         try main_box.draw(buffer);
 
-        try buffer.write("\x1b[32m");
+        try Color.BrightWhite.toFgEscape(buffer);
         const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu");
         try menu_box.draw(buffer);
 
