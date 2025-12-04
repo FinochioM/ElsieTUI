@@ -189,27 +189,52 @@ pub const List = struct {
             if (self.style.fill) |fill| {
                 if (self.parent_rect) |parent| {
                     const row_in_parent = (y + i) - (parent.y + 1);
-                    const col_in_parent = x - (parent.x + 1);
                     const inner_height = parent.height - 2;
                     const inner_width = parent.width - 2;
 
-                    const bg_color = calculateGradientColor(fill, col_in_parent, @intCast(row_in_parent), inner_height, inner_width);
-                    try bg_color.toBgEscape(buffer);
+                    var col: u16 = 0;
+                    const item_text = self.items[i];
+
+                    while (col <= item_text.len) : (col += 1) {
+                        const col_in_parent = (x - (parent.x + 1)) + col;
+                        const bg_color = calculateGradientColor(fill, col_in_parent, @intCast(row_in_parent), inner_height, inner_width);
+                        try bg_color.toBgEscape(buffer);
+
+                        if (self.style.text_color) |text_color| {
+                            try text_color.toFgEscape(buffer);
+                        }
+
+                        if (i == self.selected) {
+                            try buffer.write("\x1b[7m");
+                        }
+
+                        try buffer.writeFmt("\x1b[{};{}H", .{ y + i, x + col });
+
+                        if (col == 0) {
+                            try buffer.write(" ");
+                        } else if (col <= item_text.len) {
+                            try buffer.writeFmt("{c}", .{item_text[col - 1]});
+                        }
+
+                        if (i == self.selected) {
+                            try buffer.write("\x1b[27m");
+                        }
+                    }
                 }
-            }
+            } else {
+                if (self.style.text_color) |color| {
+                    try color.toFgEscape(buffer);
+                }
 
-            if (self.style.text_color) |color| {
-                try color.toFgEscape(buffer);
-            }
+                if (i == self.selected) {
+                    try buffer.write("\x1b[7m");
+                }
 
-            if (i == self.selected) {
-                try buffer.write("\x1b[7m");
-            }
+                try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
 
-            try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
-
-            if (i == self.selected) {
-                try buffer.write("\x1b[27m");
+                if (i == self.selected) {
+                    try buffer.write("\x1b[27m");
+                }
             }
         }
 

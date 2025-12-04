@@ -21,9 +21,7 @@ pub const MenuScene = struct {
 
         const menu_box_rect = widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 };
 
-        const list_style = style_mod.Style.init()
-            .withFill(.{ .RadialGradient = .{ .center = Color.BrightBlue, .edge = Color.rgb(10, 10, 30) } })
-            .withTextColor(Color.BrightWhite);
+        const list_style = style_mod.Style.init();
 
         self.* = MenuScene{
             .allocator = allocator,
@@ -55,8 +53,7 @@ pub const MenuScene = struct {
         try main_box.draw(buffer);
 
         const menu_box_style = style_mod.Style.init()
-            .withBorder(.{ .Solid = Color.Cyan })
-            .withFill(.{ .RadialGradient = .{ .center = Color.BrightBlue, .edge = Color.rgb(10, 10, 30) } });
+            .withBorder(.{ .Solid = Color.Cyan });
         const menu_box = widget.Box.init(
             widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 },
             "Menu",
