@@ -14,6 +14,10 @@ pub const BorderStyle = struct {
             left: Color,
             right: Color,
         },
+        DiagonalGradient: struct {
+            top_left: Color,
+            bottom_right: Color,
+        },
     };
 
     pub const FillStyle = union(enum) {
@@ -26,6 +30,10 @@ pub const BorderStyle = struct {
         HorizontalGradient: struct {
             left: Color,
             right: Color,
+        },
+        DiagonalGradient: struct {
+            top_left: Color,
+            bottom_right: Color,
         },
     };
 
@@ -46,6 +54,13 @@ pub const BorderStyle = struct {
     pub fn horizontalGradient(left: Color, right: Color) BorderStyle {
         return BorderStyle{
             .color = .{ .HorizontalGradient = .{ .left = left, .right = right } },
+            .fill = .None,
+        };
+    }
+
+    pub fn diagonalGradient(top_left: Color, bottom_right: Color) BorderStyle {
+        return BorderStyle {
+            .color = .{ .DiagonalGradient = .{ .top_left = top_left, .bottom_right = bottom_right } },
             .fill = .None,
         };
     }

@@ -106,6 +106,12 @@ pub const Box = struct {
                 const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
                 return grad.left.lerp(grad.right, t);
             },
+            .DiagonalGradient => |grad| {
+                const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
+                const t_y: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(total_height - 1));
+                const t: f32 = (t_x + t_y) / 2.0;
+                return grad.top_left.lerp(grad.bottom_right, t);
+            },
         };
     }
 
@@ -120,6 +126,12 @@ pub const Box = struct {
             .HorizontalGradient => |grad| {
                 const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(inner_width - 1));
                 return grad.left.lerp(grad.right, t);
+            },
+            .DiagonalGradient => |grad| {
+                const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(inner_width - 1));
+                const t_y: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(inner_height - 1));
+                const t: f32 = (t_x + t_y) / 2.0;
+                return grad.top_left.lerp(grad.bottom_right, t);
             },
         };
     }
