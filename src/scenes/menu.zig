@@ -41,7 +41,12 @@ pub const MenuScene = struct {
         try main_box.draw(buffer);
 
         try Color.BrightWhite.toFgEscape(buffer);
-        const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", style_mod.BorderStyle.horizontalGradient(Color.Blue, Color.Cyan));
+        const menu_box = widget.Box.init(
+            widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 },
+            "Menu",
+            style_mod.BorderStyle.horizontalGradient(Color.Blue, Color.Cyan)
+                .withFill(.{ .VerticalGradient = .{ .top = Color.rgb(20, 20, 40), .bottom = Color.rgb(40, 20, 60) } })
+        );
         try menu_box.draw(buffer);
 
         try buffer.write("\x1b[0m");

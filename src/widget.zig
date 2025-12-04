@@ -63,6 +63,22 @@ pub const Box = struct {
             try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x + w - 1 });
         }
 
+        const inner_width = w - 2;
+        const inner_height = h - 2;
+        if (inner_width > 0 and inner_height > 0) {
+            row = 0;
+            while (row < inner_height) : (row += 1) {
+                col = 0;
+                while (col < inner_width) : (col += 1) {
+                    if (self.getFillColorForPosition(col, row, inner_height, inner_width)) |fill_color| {
+                        try fill_color.toBgEscape(buffer);
+                        try buffer.writeFmt("\x1b[{};{}H ", .{ y + 1 + row, x + 1 + col });
+                    }
+                }
+            }
+            try buffer.write("\x1b[0m");
+        }
+
         try buffer.writeFmt("\x1b[{};{}H", .{ y + h - 1, x });
         col = 0;
         while (col < w) : (col += 1) {
@@ -88,6 +104,21 @@ pub const Box = struct {
             },
             .HorizontalGradient => |grad| {
                 const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
+                return grad.left.lerp(grad.right, t);
+            },
+        };
+    }
+
+    fn getFillColorForPosition(self: Box, col: u16, row: u16, inner_height: u16, inner_width: u16) ?Color {
+        return switch (self.style.fill) {
+            .None => null,
+            .Solid => |color| color,
+            .VerticalGradient => |grad| {
+                const t: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(inner_height - 1));
+                return grad.top.lerp(grad.bottom, t);
+            },
+            .HorizontalGradient => |grad| {
+                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(inner_width - 1));
                 return grad.left.lerp(grad.right, t);
             },
         };
