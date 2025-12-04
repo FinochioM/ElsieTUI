@@ -1,73 +1,49 @@
 const Color = @import("color.zig").Color;
 
-pub const BorderStyle = struct {
-    color: ColorStyle,
-    fill: FillStyle,
+pub const Style = struct {
+    border: ?BorderColor,
+    fill: ?Fill,
+    text_color: ?Color,
 
-    pub const ColorStyle = union(enum) {
-        Solid: Color,
-        VerticalGradient: struct {
-            top: Color,
-            bottom: Color,
-        },
-        HorizontalGradient: struct {
-            left: Color,
-            right: Color,
-        },
-        DiagonalGradient: struct {
-            top_left: Color,
-            bottom_right: Color,
-        },
-    };
-
-    pub const FillStyle = union(enum) {
-        None,
-        Solid: Color,
-        VerticalGradient: struct {
-            top: Color,
-            bottom: Color,
-        },
-        HorizontalGradient: struct {
-            left: Color,
-            right: Color,
-        },
-        DiagonalGradient: struct {
-            top_left: Color,
-            bottom_right: Color,
-        },
-    };
-
-    pub fn solid(color: Color) BorderStyle {
-        return BorderStyle{
-            .color = .{ .Solid = color },
-            .fill = .None,
+    pub fn init() Style {
+        return Style{
+            .border = null,
+            .fill = null,
+            .text_color = null,
         };
     }
 
-    pub fn verticalGradient(top: Color, bottom: Color) BorderStyle {
-        return BorderStyle{
-            .color = .{ .VerticalGradient = .{ .top = top, .bottom = bottom } },
-            .fill = .None,
-        };
+    pub fn withBorder(self: Style, border: BorderColor) Style {
+        var result = self;
+        result.border = border;
+        return result;
     }
 
-    pub fn horizontalGradient(left: Color, right: Color) BorderStyle {
-        return BorderStyle{
-            .color = .{ .HorizontalGradient = .{ .left = left, .right = right } },
-            .fill = .None,
-        };
-    }
-
-    pub fn diagonalGradient(top_left: Color, bottom_right: Color) BorderStyle {
-        return BorderStyle {
-            .color = .{ .DiagonalGradient = .{ .top_left = top_left, .bottom_right = bottom_right } },
-            .fill = .None,
-        };
-    }
-
-    pub fn withFill(self: BorderStyle, fill: FillStyle) BorderStyle {
+    pub fn withFill(self: Style, fill: Fill) Style {
         var result = self;
         result.fill = fill;
         return result;
     }
+
+    pub fn withTextColor(self: Style, color: Color) Style {
+        var result = self;
+        result.text_color = color;
+        return result;
+    }
+};
+
+pub const BorderColor = union(enum) {
+    Solid: Color,
+    VerticalGradient: struct { top: Color, bottom: Color },
+    HorizontalGradient: struct { left: Color, right: Color },
+    DiagonalGradient: struct { top_left: Color, bottom_right: Color },
+    RadialGradient: struct { center: Color, edge: Color },
+};
+
+pub const Fill = union(enum) {
+    Solid: Color,
+    VerticalGradient: struct { top: Color, bottom: Color },
+    HorizontalGradient: struct { left: Color, right: Color },
+    DiagonalGradient: struct { top_left: Color, bottom_right: Color },
+    RadialGradient: struct { center: Color, edge: Color },
 };

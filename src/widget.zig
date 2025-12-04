@@ -10,16 +10,46 @@ pub const Rect = struct {
     height: u16,
 };
 
+fn calculateGradientColor(gradient: anytype, col: u16, row: u16, total_height: u16, total_width: u16) Color {
+    return switch (gradient) {
+        .Solid => |color| color,
+        .VerticalGradient => |grad| {
+            const t: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(total_height - 1));
+            return grad.top.lerp(grad.bottom, t);
+        },
+        .HorizontalGradient => |grad| {
+            const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
+            return grad.left.lerp(grad.right, t);
+        },
+        .DiagonalGradient => |grad| {
+            const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
+            const t_y: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(total_height - 1));
+            const t: f32 = (t_x + t_y) / 2.0;
+            return grad.top_left.lerp(grad.bottom_right, t);
+        },
+        .RadialGradient => |grad| {
+            const center_x: f32 = @as(f32, @floatFromInt(total_width)) / 2.0;
+            const center_y: f32 = @as(f32, @floatFromInt(total_height)) / 2.0;
+            const dx = @as(f32, @floatFromInt(col)) - center_x;
+            const dy = @as(f32, @floatFromInt(row)) - center_y;
+            const max_dist = @sqrt(center_x * center_x + center_y * center_y);
+            const dist = @sqrt(dx * dx + dy * dy);
+            const t: f32 = @min(1.0, dist / max_dist);
+            return grad.center.lerp(grad.edge, t);
+        },
+    };
+}
+
 pub const Box = struct {
     rect: Rect,
     title: []const u8,
-    style: style_mod.BorderStyle,
+    style: style_mod.Style,
 
-    pub fn init(rect: Rect, title: []const u8, border_style: style_mod.BorderStyle) Box {
+    pub fn init(rect: Rect, title: []const u8, style: style_mod.Style) Box {
         return Box{
             .rect = rect,
             .title = title,
-            .style = border_style,
+            .style = style,
         };
     }
 
@@ -29,111 +59,73 @@ pub const Box = struct {
         const w = self.rect.width;
         const h = self.rect.height;
 
-        try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
-        var col: u16 = 0;
-        while (col < w) : (col += 1) {
-            const color = self.getColorForPosition(col, 0, h, w);
-            try color.toFgEscape(buffer);
+        if (self.style.border) |border| {
+            try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
+            var col: u16 = 0;
+            while (col < w) : (col += 1) {
+                const color = calculateGradientColor(border, col, 0, h, w);
+                try color.toFgEscape(buffer);
 
-            if (col == 0) {
-                try buffer.write("┌");
-            } else if (col == w - 1) {
-                try buffer.write("┐");
-            } else if (self.title.len > 0 and col >= 1 and col < self.title.len + 3 and col < w - 2) {
-                if (col == 1) {
-                    try buffer.write(" ");
-                } else if (col == self.title.len + 2) {
-                    try buffer.write(" ");
+                if (col == 0) {
+                    try buffer.write("┌");
+                } else if (col == w - 1) {
+                    try buffer.write("┐");
+                } else if (self.title.len > 0 and col >= 1 and col < self.title.len + 3 and col < w - 2) {
+                    if (col == 1) {
+                        try buffer.write(" ");
+                    } else if (col == self.title.len + 2) {
+                        try buffer.write(" ");
+                    } else {
+                        try buffer.writeFmt("{c}", .{self.title[col - 2]});
+                    }
                 } else {
-                    try buffer.writeFmt("{c}", .{self.title[col - 2]});
+                    try buffer.write("─");
                 }
-            } else {
-                try buffer.write("─");
+            }
+
+            var row: u16 = 1;
+            while (row < h - 1) : (row += 1) {
+                const left_color = calculateGradientColor(border, 0, row, h, w);
+                try left_color.toFgEscape(buffer);
+                try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x });
+
+                const right_color = calculateGradientColor(border, w - 1, row, h, w);
+                try right_color.toFgEscape(buffer);
+                try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x + w - 1 });
+            }
+
+            try buffer.writeFmt("\x1b[{};{}H", .{ y + h - 1, x });
+            col = 0;
+            while (col < w) : (col += 1) {
+                const color = calculateGradientColor(border, col, h - 1, h, w);
+                try color.toFgEscape(buffer);
+
+                if (col == 0) {
+                    try buffer.write("└");
+                } else if (col == w - 1) {
+                    try buffer.write("┘");
+                } else {
+                    try buffer.write("─");
+                }
             }
         }
 
-        var row: u16 = 1;
-        while (row < h - 1) : (row += 1) {
-            const left_color = self.getColorForPosition(0, row, h, w);
-            try left_color.toFgEscape(buffer);
-            try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x });
-
-            const right_color = self.getColorForPosition(w - 1, row, h, w);
-            try right_color.toFgEscape(buffer);
-            try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x + w - 1 });
-        }
-
-        const inner_width = w - 2;
-        const inner_height = h - 2;
-        if (inner_width > 0 and inner_height > 0) {
-            row = 0;
-            while (row < inner_height) : (row += 1) {
-                col = 0;
-                while (col < inner_width) : (col += 1) {
-                    if (self.getFillColorForPosition(col, row, inner_height, inner_width)) |fill_color| {
+        if (self.style.fill) |fill| {
+            const inner_width = w - 2;
+            const inner_height = h - 2;
+            if (inner_width > 0 and inner_height > 0) {
+                var row: u16 = 0;
+                while (row < inner_height) : (row += 1) {
+                    var col: u16 = 0;
+                    while (col < inner_width) : (col += 1) {
+                        const fill_color = calculateGradientColor(fill, col, row, inner_height, inner_width);
                         try fill_color.toBgEscape(buffer);
                         try buffer.writeFmt("\x1b[{};{}H ", .{ y + 1 + row, x + 1 + col });
                     }
                 }
-            }
-            try buffer.write("\x1b[0m");
-        }
-
-        try buffer.writeFmt("\x1b[{};{}H", .{ y + h - 1, x });
-        col = 0;
-        while (col < w) : (col += 1) {
-            const color = self.getColorForPosition(col, h - 1, h, w);
-            try color.toFgEscape(buffer);
-
-            if (col == 0) {
-                try buffer.write("└");
-            } else if (col == w - 1) {
-                try buffer.write("┘");
-            } else {
-                try buffer.write("─");
+                try buffer.write("\x1b[0m");
             }
         }
-    }
-
-    fn getColorForPosition(self: Box, col: u16, row: u16, total_height: u16, total_width: u16) Color {
-        return switch (self.style.color) {
-            .Solid => |color| color,
-            .VerticalGradient => |grad| {
-                const t: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(total_height - 1));
-                return grad.top.lerp(grad.bottom, t);
-            },
-            .HorizontalGradient => |grad| {
-                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
-                return grad.left.lerp(grad.right, t);
-            },
-            .DiagonalGradient => |grad| {
-                const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(total_width - 1));
-                const t_y: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(total_height - 1));
-                const t: f32 = (t_x + t_y) / 2.0;
-                return grad.top_left.lerp(grad.bottom_right, t);
-            },
-        };
-    }
-
-    fn getFillColorForPosition(self: Box, col: u16, row: u16, inner_height: u16, inner_width: u16) ?Color {
-        return switch (self.style.fill) {
-            .None => null,
-            .Solid => |color| color,
-            .VerticalGradient => |grad| {
-                const t: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(inner_height - 1));
-                return grad.top.lerp(grad.bottom, t);
-            },
-            .HorizontalGradient => |grad| {
-                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(inner_width - 1));
-                return grad.left.lerp(grad.right, t);
-            },
-            .DiagonalGradient => |grad| {
-                const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(inner_width - 1));
-                const t_y: f32 = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(inner_height - 1));
-                const t: f32 = (t_x + t_y) / 2.0;
-                return grad.top_left.lerp(grad.bottom_right, t);
-            },
-        };
     }
 };
 
@@ -141,17 +133,25 @@ pub const Text = struct {
     x: u16,
     y: u16,
     content: []const u8,
+    style: style_mod.Style,
 
-    pub fn init(x: u16, y: u16, content: []const u8) Text {
+    pub fn init(x: u16, y: u16, content: []const u8, style: style_mod.Style) Text {
         return Text{
             .x = x,
             .y = y,
             .content = content,
+            .style = style,
         };
     }
 
     pub fn draw(self: Text, buffer: *Buffer) !void {
+        if (self.style.text_color) |color| {
+            try color.toFgEscape(buffer);
+        }
         try buffer.writeFmt("\x1b[{};{}H{s}", .{ self.y, self.x, self.content });
+        if (self.style.text_color != null) {
+            try buffer.write("\x1b[0m");
+        }
     }
 };
 
@@ -159,13 +159,23 @@ pub const List = struct {
     rect: Rect,
     items: []const []const u8,
     selected: usize,
+    style: style_mod.Style,
+    parent_rect: ?Rect,
 
-    pub fn init(rect: Rect, items: []const []const u8) List {
+    pub fn init(rect: Rect, items: []const []const u8, style: style_mod.Style) List {
         return List{
             .rect = rect,
             .items = items,
             .selected = 0,
+            .style = style,
+            .parent_rect = null,
         };
+    }
+
+    pub fn withParent(self: List, parent: Rect) List {
+        var result = self;
+        result.parent_rect = parent;
+        return result;
     }
 
     pub fn draw(self: List, buffer: *Buffer) !void {
@@ -176,6 +186,22 @@ pub const List = struct {
         while (i < self.items.len) : (i += 1) {
             if (i >= self.rect.height) break;
 
+            if (self.style.fill) |fill| {
+                if (self.parent_rect) |parent| {
+                    const row_in_parent = (y + i) - (parent.y + 1);
+                    const col_in_parent = x - (parent.x + 1);
+                    const inner_height = parent.height - 2;
+                    const inner_width = parent.width - 2;
+
+                    const bg_color = calculateGradientColor(fill, col_in_parent, @intCast(row_in_parent), inner_height, inner_width);
+                    try bg_color.toBgEscape(buffer);
+                }
+            }
+
+            if (self.style.text_color) |color| {
+                try color.toFgEscape(buffer);
+            }
+
             if (i == self.selected) {
                 try buffer.write("\x1b[7m");
             }
@@ -183,8 +209,12 @@ pub const List = struct {
             try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
 
             if (i == self.selected) {
-                try buffer.write("\x1b[0m");
+                try buffer.write("\x1b[27m");
             }
+        }
+
+        if (self.style.fill != null or self.style.text_color != null) {
+            try buffer.write("\x1b[0m");
         }
     }
 
@@ -205,12 +235,14 @@ pub const TextInput = struct {
     rect: Rect,
     content: std.ArrayList(u8),
     cursor_pos: usize,
+    style: style_mod.Style,
 
-    pub fn init(allocator: std.mem.Allocator, rect: Rect) TextInput {
+    pub fn init(allocator: std.mem.Allocator, rect: Rect, style: style_mod.Style) TextInput {
         return TextInput{
             .rect = rect,
             .content = std.ArrayList(u8).init(allocator),
             .cursor_pos = 0,
+            .style = style,
         };
     }
 
@@ -222,12 +254,20 @@ pub const TextInput = struct {
         const x = self.rect.x;
         const y = self.rect.y;
 
+        if (self.style.text_color) |color| {
+            try color.toFgEscape(buffer);
+        }
+
         try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
         if (self.content.items.len > 0) {
             try buffer.writeFmt("{s}", .{self.content.items});
         }
 
         try buffer.writeFmt("\x1b[{};{}H", .{ y, x + self.cursor_pos });
+
+        if (self.style.text_color != null) {
+            try buffer.write("\x1b[0m");
+        }
     }
 
     pub fn insertChar(self: *TextInput, c: u8) !void {

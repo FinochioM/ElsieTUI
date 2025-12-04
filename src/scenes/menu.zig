@@ -12,7 +12,6 @@ pub const MenuScene = struct {
 
     pub fn init(allocator: std.mem.Allocator) !*MenuScene {
         const self = try allocator.create(MenuScene);
-
         const items = [_][]const u8{
             "Start Game",
             "Settings",
@@ -20,9 +19,19 @@ pub const MenuScene = struct {
             "Quit",
         };
 
+        const menu_box_rect = widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 };
+
+        const list_style = style_mod.Style.init()
+            .withFill(.{ .RadialGradient = .{ .center = Color.BrightBlue, .edge = Color.rgb(10, 10, 30) } })
+            .withTextColor(Color.BrightWhite);
+
         self.* = MenuScene{
             .allocator = allocator,
-            .list = widget.List.init(widget.Rect{ .x = 10, .y = 7, .width = 30, .height = 4 }, &items),
+            .list = widget.List.init(
+                widget.Rect{ .x = 10, .y = 7, .width = 30, .height = 4 },
+                &items,
+                list_style
+            ).withParent(menu_box_rect),
             .should_quit = false,
         };
 
@@ -36,15 +45,22 @@ pub const MenuScene = struct {
     pub fn render(self: *MenuScene, buffer: *Buffer, rows: u16, cols: u16) !void {
         try buffer.write("\x1b[2J");
 
-        try Color.Red.toFgEscape(buffer);
-        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu", style_mod.BorderStyle.verticalGradient(Color.Red, Color.Blue));
+        const main_box_style = style_mod.Style.init()
+            .withBorder(.{ .VerticalGradient = .{ .top = Color.Red, .bottom = Color.Blue } });
+        const main_box = widget.Box.init(
+            widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows },
+            "ElsieTUI - Main Menu",
+            main_box_style
+        );
         try main_box.draw(buffer);
 
-        try Color.BrightWhite.toFgEscape(buffer);
+        const menu_box_style = style_mod.Style.init()
+            .withBorder(.{ .Solid = Color.Cyan })
+            .withFill(.{ .RadialGradient = .{ .center = Color.BrightBlue, .edge = Color.rgb(10, 10, 30) } });
         const menu_box = widget.Box.init(
             widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 },
             "Menu",
-            style_mod.BorderStyle.diagonalGradient(Color.Magenta, Color.Cyan)
+            menu_box_style
         );
         try menu_box.draw(buffer);
 
