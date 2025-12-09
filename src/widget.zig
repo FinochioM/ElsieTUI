@@ -233,14 +233,18 @@ pub const List = struct {
                                         break :blk grad.left;
                                     }
                                 },
-                                .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                                .Vertical => |grad| blk: {
+                                    const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.items.len - 1));
+                                    break :blk grad.top.lerp(grad.bottom, t);
+                                },
                                 .Diagonal => |grad| blk: {
-                                    if (item_text.len > 1) {
-                                        const t: f32 = @as(f32, @floatFromInt(col - 1)) / @as(f32, @floatFromInt(item_text.len - 1));
-                                        break :blk grad.top_left.lerp(grad.bottom_right, t);
-                                    } else {
-                                        break :blk grad.top_left;
-                                    }
+                                    const t_x: f32 = if (item_text.len > 1)
+                                        @as(f32, @floatFromInt(col - 1)) / @as(f32, @floatFromInt(item_text.len - 1))
+                                    else
+                                        0.0;
+                                    const t_y: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.items.len - 1));
+                                    const t: f32 = (t_x + t_y) / 2.0;
+                                    break :blk grad.top_left.lerp(grad.bottom_right, t);
                                 },
                                 .Radial => |grad| blk: {
                                     const center: f32 = @as(f32, @floatFromInt(item_text.len)) / 2.0;
@@ -287,9 +291,14 @@ pub const List = struct {
                                 const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
                                 break :blk grad.left.lerp(grad.right, t);
                             },
-                            .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                            .Vertical => |grad| blk: {
+                                const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.items.len - 1));
+                                break :blk grad.top.lerp(grad.bottom, t);
+                            },
                             .Diagonal => |grad| blk: {
-                                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                const t_x: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                const t_y: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.items.len - 1));
+                                const t: f32 = (t_x + t_y) / 2.0;
                                 break :blk grad.top_left.lerp(grad.bottom_right, t);
                             },
                             .Radial => |grad| blk: {

@@ -54,8 +54,8 @@ pub const MenuScene = struct {
 
         try gradient_text1.draw(buffer);
 
-        const gradient_text_style2 = style_mod.Style.init().withTextGradient(.{ .Radial = .{ .center = Color.Red, .edge = Color.Blue } });
-        const gradient_text2 = widget.Text.init(10, 14, "Radial Gradient", gradient_text_style2);
+        const gradient_text_style2 = style_mod.Style.init().withTextGradient(.{ .Diagonal = .{ .top_left = Color.Red, .bottom_right = Color.Blue } });
+        const gradient_text2 = widget.Text.init(10, 14, "Diagonal Gradient", gradient_text_style2);
 
         try gradient_text2.draw(buffer);
 
