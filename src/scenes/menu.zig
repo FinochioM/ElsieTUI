@@ -49,10 +49,15 @@ pub const MenuScene = struct {
         const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", menu_box_style);
         try menu_box.draw(buffer);
 
-        const gradient_text_style = style_mod.Style.init().withTextGradient(.{ .Horizontal = .{ .left = Color.Red, .right = Color.Blue } });
-        const gradient_text = widget.Text.init(10, 12, "Rainbow Text", gradient_text_style);
+        const gradient_text_style1 = style_mod.Style.init().withTextGradient(.{ .Horizontal = .{ .left = Color.Red, .right = Color.Blue } });
+        const gradient_text1 = widget.Text.init(10, 12, "Horizontal Gradient", gradient_text_style1);
 
-        try gradient_text.draw(buffer);
+        try gradient_text1.draw(buffer);
+
+        const gradient_text_style2 = style_mod.Style.init().withTextGradient(.{ .Radial = .{ .center = Color.Red, .edge = Color.Blue } });
+        const gradient_text2 = widget.Text.init(10, 14, "Radial Gradient", gradient_text_style2);
+
+        try gradient_text2.draw(buffer);
 
         try buffer.write("\x1b[0m");
         try self.list.draw(buffer);

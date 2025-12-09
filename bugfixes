@@ -3,4 +3,5 @@
 - Text renders ON TOP of border. FIXED (problem was from testing with menu.zig, not actual TUI framework)
 - The widgets jitter sometimess. FIXED.
 - The fill does not work well wih the List widget. FIXED.
+- Text Gradient vertical does not work. Diagonal looks the exact same as Horizontal.
 - The colors do not match in different terminals (vscode, ghostty, etc)

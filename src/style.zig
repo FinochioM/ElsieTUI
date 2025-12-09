@@ -51,4 +51,7 @@ pub const Fill = union(enum) {
 pub const TextGradient = union(enum) {
     Solid: Color,
     Horizontal: struct { left: Color, right: Color },
+    Vertical: struct { top: Color, bottom: Color },
+    Diagonal: struct { top_left: Color, bottom_right: Color },
+    Radial: struct { center: Color, edge: Color },
 };

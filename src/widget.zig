@@ -154,6 +154,18 @@ pub const Text = struct {
                         const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.len - 1));
                         break :blk grad.left.lerp(grad.right, t);
                     },
+                    .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                    .Diagonal => |grad| blk: {
+                        const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.len - 1));
+                        break :blk grad.top_left.lerp(grad.bottom_right, t);
+                    },
+                    .Radial => |grad| blk: {
+                        const center: f32 = @as(f32, @floatFromInt(self.content.len)) / 2.0;
+                        const dist = @fabs(@as(f32, @floatFromInt(i)) - center);
+                        const max_dist = center;
+                        const t: f32 = @min(1.0, dist / max_dist);
+                        break :blk grad.center.lerp(grad.edge, t);
+                    },
                 };
                 try color.toFgEscape(buffer);
                 try buffer.writeFmt("\x1b[{};{}H{c}", .{ self.y, self.x + i, self.content[i] });
@@ -221,6 +233,21 @@ pub const List = struct {
                                         break :blk grad.left;
                                     }
                                 },
+                                .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                                .Diagonal => |grad| blk: {
+                                    if (item_text.len > 1) {
+                                        const t: f32 = @as(f32, @floatFromInt(col - 1)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                        break :blk grad.top_left.lerp(grad.bottom_right, t);
+                                    } else {
+                                        break :blk grad.top_left;
+                                    }
+                                },
+                                .Radial => |grad| blk: {
+                                    const center: f32 = @as(f32, @floatFromInt(item_text.len)) / 2.0;
+                                    const dist = @fabs(@as(f32, @floatFromInt(col - 1)) - center);
+                                    const t: f32 = @min(1.0, dist / center);
+                                    break :blk grad.center.lerp(grad.edge, t);
+                                },
                             };
                             try text_color.toFgEscape(buffer);
                         }
@@ -259,6 +286,17 @@ pub const List = struct {
                             .Horizontal => |grad| blk: {
                                 const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
                                 break :blk grad.left.lerp(grad.right, t);
+                            },
+                            .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                            .Diagonal => |grad| blk: {
+                                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                break :blk grad.top_left.lerp(grad.bottom_right, t);
+                            },
+                            .Radial => |grad| blk: {
+                                const center: f32 = @as(f32, @floatFromInt(item_text.len)) / 2.0;
+                                const dist = @fabs(@as(f32, @floatFromInt(col)) - center);
+                                const t: f32 = @min(1.0, dist / center);
+                                break :blk grad.center.lerp(grad.edge, t);
                             },
                         };
                         try text_color.toFgEscape(buffer);
@@ -334,6 +372,17 @@ pub const TextInput = struct {
                         .Horizontal => |grad| blk: {
                             const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.items.len - 1));
                             break :blk grad.left.lerp(grad.right, t);
+                        },
+                        .Vertical => |grad| grad.top.lerp(grad.bottom, 0.5),
+                        .Diagonal => |grad| blk: {
+                            const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.items.len - 1));
+                            break :blk grad.top_left.lerp(grad.bottom_right, t);
+                        },
+                        .Radial => |grad| blk: {
+                            const center: f32 = @as(f32, @floatFromInt(self.content.items.len)) / 2.0;
+                            const dist = @fabs(@as(f32, @floatFromInt(i)) - center);
+                            const t: f32 = @min(1.0, dist / center);
+                            break :blk grad.center.lerp(grad.edge, t);
                         },
                     };
                     try color.toFgEscape(buffer);
