@@ -45,32 +45,14 @@ pub const MenuScene = struct {
         try main_box.draw(buffer);
 
         const menu_box_style = style_mod.Style.init()
-            .withBorder(.{ .Solid = Color.Cyan });
+            .withBorder(.{ .Solid = Color.Cyan })
+            .withBorderStyle(.Single);
         const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", menu_box_style);
         try menu_box.draw(buffer);
 
-        const gradient_text_style1 = style_mod.Style.init().withTextGradient(.{ .Horizontal = .{ .left = Color.Red, .right = Color.Blue } });
-        const gradient_text1 = widget.Text.init(10, 12, "Horizontal Gradient", gradient_text_style1);
-
-        try gradient_text1.draw(buffer);
-
-        const gradient_text_style2 = style_mod.Style.init().withTextGradient(.{ .Diagonal = .{ .top_left = Color.Red, .bottom_right = Color.Blue } });
-        const gradient_text2 = widget.Text.init(10, 14, "Diagonal Gradient", gradient_text_style2);
-
-        try gradient_text2.draw(buffer);
-
         try buffer.write("\x1b[0m");
+
         try self.list.draw(buffer);
-
-        const y_test: u16 = rows - 3;
-        var i: u16 = 10;
-        while (i < 50) : (i += 1) {
-            const t: f32 = @as(f32, @floatFromInt(i - 10)) / 40.0;
-            const gradient_color = Color.Red.lerp(Color.Blue, t);
-            try gradient_color.toFgEscape(buffer);
-            try buffer.writeFmt("\x1b[{};{}H█", .{ y_test, i });
-        }
-        try buffer.write("\x1b[0m");
 
         try buffer.write("\x1b[");
         try buffer.writeFmt("{}", .{rows - 1});

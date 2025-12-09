@@ -45,6 +45,60 @@ pub const Box = struct {
     title: []const u8,
     style: style_mod.Style,
 
+    const BorderChars = struct {
+        top_left: []const u8,
+        top_right: []const u8,
+        bottom_left: []const u8,
+        bottom_right: []const u8,
+        horizontal: []const u8,
+        vertical: []const u8,
+    };
+
+    fn getBorderChars(style: style_mod.BorderStyle) BorderChars {
+        return switch (style) {
+            .Single => .{
+                .top_left = "┌",
+                .top_right = "┐",
+                .bottom_left = "└",
+                .bottom_right = "┘",
+                .horizontal = "─",
+                .vertical = "│",
+            },
+            .Double => .{
+                .top_left = "╔",
+                .top_right = "╗",
+                .bottom_left = "╚",
+                .bottom_right = "╝",
+                .horizontal = "═",
+                .vertical = "║",
+            },
+            .Rounded => .{
+                .top_left = "╭",
+                .top_right = "╮",
+                .bottom_left = "╰",
+                .bottom_right = "╯",
+                .horizontal = "─",
+                .vertical = "│",
+            },
+            .Thick => .{
+                .top_left = "┏",
+                .top_right = "┓",
+                .bottom_left = "┗",
+                .bottom_right = "┛",
+                .horizontal = "━",
+                .vertical = "┃",
+            },
+            .Dotted => .{
+                .top_left = "┌",
+                .top_right = "┐",
+                .bottom_left = "└",
+                .bottom_right = "┘",
+                .horizontal = "╌",
+                .vertical = "╎",
+            },
+        };
+    }
+
     pub fn init(rect: Rect, title: []const u8, style: style_mod.Style) Box {
         return Box{
             .rect = rect,
@@ -60,6 +114,8 @@ pub const Box = struct {
         const h = self.rect.height;
 
         if (self.style.border) |border| {
+            const chars = getBorderChars(self.style.border_style);
+
             try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
             var col: u16 = 0;
             while (col < w) : (col += 1) {
@@ -67,9 +123,9 @@ pub const Box = struct {
                 try color.toFgEscape(buffer);
 
                 if (col == 0) {
-                    try buffer.write("┌");
+                    try buffer.write(chars.top_left);
                 } else if (col == w - 1) {
-                    try buffer.write("┐");
+                    try buffer.write(chars.top_right);
                 } else if (self.title.len > 0 and col >= 1 and col < self.title.len + 3 and col < w - 2) {
                     if (col == 1) {
                         try buffer.write(" ");
@@ -79,7 +135,7 @@ pub const Box = struct {
                         try buffer.writeFmt("{c}", .{self.title[col - 2]});
                     }
                 } else {
-                    try buffer.write("─");
+                    try buffer.write(chars.horizontal);
                 }
             }
 
@@ -87,11 +143,11 @@ pub const Box = struct {
             while (row < h - 1) : (row += 1) {
                 const left_color = calculateGradientColor(border, 0, row, h, w);
                 try left_color.toFgEscape(buffer);
-                try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x });
+                try buffer.writeFmt("\x1b[{};{}H{s}", .{ y + row, x, chars.vertical });
 
                 const right_color = calculateGradientColor(border, w - 1, row, h, w);
                 try right_color.toFgEscape(buffer);
-                try buffer.writeFmt("\x1b[{};{}H│", .{ y + row, x + w - 1 });
+                try buffer.writeFmt("\x1b[{};{}H{s}", .{ y + row, x + w - 1, chars.vertical });
             }
 
             try buffer.writeFmt("\x1b[{};{}H", .{ y + h - 1, x });
@@ -101,11 +157,11 @@ pub const Box = struct {
                 try color.toFgEscape(buffer);
 
                 if (col == 0) {
-                    try buffer.write("└");
+                    try buffer.write(chars.bottom_left);
                 } else if (col == w - 1) {
-                    try buffer.write("┘");
+                    try buffer.write(chars.bottom_right);
                 } else {
-                    try buffer.write("─");
+                    try buffer.write(chars.horizontal);
                 }
             }
         }
