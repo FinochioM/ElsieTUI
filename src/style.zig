@@ -3,13 +3,13 @@ const Color = @import("color.zig").Color;
 pub const Style = struct {
     border: ?BorderColor,
     fill: ?Fill,
-    text_color: ?Color,
+    text_gradient: ?TextGradient,
 
     pub fn init() Style {
         return Style{
             .border = null,
             .fill = null,
-            .text_color = null,
+            .text_gradient = null,
         };
     }
 
@@ -25,9 +25,9 @@ pub const Style = struct {
         return result;
     }
 
-    pub fn withTextColor(self: Style, color: Color) Style {
+    pub fn withTextGradient(self: Style, text_gradient: TextGradient) Style {
         var result = self;
-        result.text_color = color;
+        result.text_gradient = text_gradient;
         return result;
     }
 };
@@ -46,4 +46,9 @@ pub const Fill = union(enum) {
     HorizontalGradient: struct { left: Color, right: Color },
     DiagonalGradient: struct { top_left: Color, bottom_right: Color },
     RadialGradient: struct { center: Color, edge: Color },
+};
+
+pub const TextGradient = union(enum) {
+    Solid: Color,
+    Horizontal: struct { left: Color, right: Color },
 };

@@ -145,12 +145,22 @@ pub const Text = struct {
     }
 
     pub fn draw(self: Text, buffer: *Buffer) !void {
-        if (self.style.text_color) |color| {
-            try color.toFgEscape(buffer);
-        }
-        try buffer.writeFmt("\x1b[{};{}H{s}", .{ self.y, self.x, self.content });
-        if (self.style.text_color != null) {
+        if (self.style.text_gradient) |gradient| {
+            var i: usize = 0;
+            while (i < self.content.len) : (i += 1) {
+                const color = switch (gradient) {
+                    .Solid => |c| c,
+                    .Horizontal => |grad| blk: {
+                        const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.len - 1));
+                        break :blk grad.left.lerp(grad.right, t);
+                    },
+                };
+                try color.toFgEscape(buffer);
+                try buffer.writeFmt("\x1b[{};{}H{c}", .{ self.y, self.x + i, self.content[i] });
+            }
             try buffer.write("\x1b[0m");
+        } else {
+            try buffer.writeFmt("\x1b[{};{}H{s}", .{ self.y, self.x, self.content });
         }
     }
 };
@@ -200,7 +210,18 @@ pub const List = struct {
                         const bg_color = calculateGradientColor(fill, col_in_parent, @intCast(row_in_parent), inner_height, inner_width);
                         try bg_color.toBgEscape(buffer);
 
-                        if (self.style.text_color) |text_color| {
+                        if (self.style.text_gradient) |text_gradient| {
+                            const text_color = switch (text_gradient) {
+                                .Solid => |c| c,
+                                .Horizontal => |grad| blk: {
+                                    if (item_text.len > 1) {
+                                        const t: f32 = @as(f32, @floatFromInt(col - 1)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                        break :blk grad.left.lerp(grad.right, t);
+                                    } else {
+                                        break :blk grad.left;
+                                    }
+                                },
+                            };
                             try text_color.toFgEscape(buffer);
                         }
 
@@ -222,23 +243,46 @@ pub const List = struct {
                     }
                 }
             } else {
-                if (self.style.text_color) |color| {
-                    try color.toFgEscape(buffer);
-                }
+                if (self.style.text_gradient) |text_gradient| {
+                    const item_text = self.items[i];
+                    var col: u16 = 0;
 
-                if (i == self.selected) {
-                    try buffer.write("\x1b[7m");
-                }
+                    if (i == self.selected) {
+                        try buffer.write("\x1b[7m");
+                    }
 
-                try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
+                    try buffer.writeFmt("\x1b[{};{}H ", .{ y + i, x });
 
-                if (i == self.selected) {
-                    try buffer.write("\x1b[27m");
+                    while (col < item_text.len) : (col += 1) {
+                        const text_color = switch (text_gradient) {
+                            .Solid => |c| c,
+                            .Horizontal => |grad| blk: {
+                                const t: f32 = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(item_text.len - 1));
+                                break :blk grad.left.lerp(grad.right, t);
+                            },
+                        };
+                        try text_color.toFgEscape(buffer);
+                        try buffer.writeFmt("{c}", .{item_text[col]});
+                    }
+
+                    if (i == self.selected) {
+                        try buffer.write("\x1b[27m");
+                    }
+                } else {
+                    if (i == self.selected) {
+                        try buffer.write("\x1b[7m");
+                    }
+
+                    try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
+
+                    if (i == self.selected) {
+                        try buffer.write("\x1b[27m");
+                    }
                 }
             }
         }
 
-        if (self.style.fill != null or self.style.text_color != null) {
+        if (self.style.fill != null or self.style.text_gradient != null) {
             try buffer.write("\x1b[0m");
         }
     }
@@ -279,18 +323,30 @@ pub const TextInput = struct {
         const x = self.rect.x;
         const y = self.rect.y;
 
-        if (self.style.text_color) |color| {
-            try color.toFgEscape(buffer);
-        }
-
         try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
+
         if (self.content.items.len > 0) {
-            try buffer.writeFmt("{s}", .{self.content.items});
+            if (self.style.text_gradient) |gradient| {
+                var i: usize = 0;
+                while (i < self.content.items.len) : (i += 1) {
+                    const color = switch (gradient) {
+                        .Solid => |c| c,
+                        .Horizontal => |grad| blk: {
+                            const t: f32 = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.content.items.len - 1));
+                            break :blk grad.left.lerp(grad.right, t);
+                        },
+                    };
+                    try color.toFgEscape(buffer);
+                    try buffer.writeFmt("{c}", .{self.content.items[i]});
+                }
+            } else {
+                try buffer.writeFmt("{s}", .{self.content.items});
+            }
         }
 
         try buffer.writeFmt("\x1b[{};{}H", .{ y, x + self.cursor_pos });
 
-        if (self.style.text_color != null) {
+        if (self.style.text_gradient != null) {
             try buffer.write("\x1b[0m");
         }
     }

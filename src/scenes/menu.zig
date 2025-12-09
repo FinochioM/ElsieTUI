@@ -25,11 +25,7 @@ pub const MenuScene = struct {
 
         self.* = MenuScene{
             .allocator = allocator,
-            .list = widget.List.init(
-                widget.Rect{ .x = 10, .y = 7, .width = 30, .height = 4 },
-                &items,
-                list_style
-            ).withParent(menu_box_rect),
+            .list = widget.List.init(widget.Rect{ .x = 10, .y = 7, .width = 30, .height = 4 }, &items, list_style).withParent(menu_box_rect),
             .should_quit = false,
         };
 
@@ -45,21 +41,18 @@ pub const MenuScene = struct {
 
         const main_box_style = style_mod.Style.init()
             .withBorder(.{ .VerticalGradient = .{ .top = Color.Red, .bottom = Color.Blue } });
-        const main_box = widget.Box.init(
-            widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows },
-            "ElsieTUI - Main Menu",
-            main_box_style
-        );
+        const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu", main_box_style);
         try main_box.draw(buffer);
 
         const menu_box_style = style_mod.Style.init()
             .withBorder(.{ .Solid = Color.Cyan });
-        const menu_box = widget.Box.init(
-            widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 },
-            "Menu",
-            menu_box_style
-        );
+        const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", menu_box_style);
         try menu_box.draw(buffer);
+
+        const gradient_text_style = style_mod.Style.init().withTextGradient(.{ .Horizontal = .{ .left = Color.Red, .right = Color.Blue } });
+        const gradient_text = widget.Text.init(10, 12, "Rainbow Text", gradient_text_style);
+
+        try gradient_text.draw(buffer);
 
         try buffer.write("\x1b[0m");
         try self.list.draw(buffer);
