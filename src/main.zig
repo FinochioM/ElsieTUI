@@ -7,6 +7,7 @@ const Scene = scene_mod.Scene;
 const MenuScene = @import("scenes/menu.zig").MenuScene;
 const os = std.os;
 const linux = os.linux;
+const time_mod = std.time;
 
 const TUI = struct {
     rows: u16,
@@ -15,6 +16,7 @@ const TUI = struct {
     buffer: Buffer,
     current_scene: Scene,
     menu_scene: *MenuScene,
+    start_time: i64,
 
     fn init(allocator: std.mem.Allocator) !TUI {
         const size = try terminal.getSize();
@@ -28,6 +30,7 @@ const TUI = struct {
             .buffer = Buffer.init(allocator),
             .current_scene = Scene.init(menu_scene),
             .menu_scene = menu_scene,
+            .start_time = time_mod.milliTimestamp(),
         };
     }
 
@@ -44,7 +47,10 @@ const TUI = struct {
 
     fn render(self: *TUI) !void {
         self.buffer.clear();
-        try self.current_scene.render(&self.buffer, self.rows, self.cols);
+        const current_time = time_mod.milliTimestamp();
+        const elapsed_seconds: f32 = @floatFromInt(current_time - self.start_time);
+        const time: f32 = elapsed_seconds / 1000.0;
+        try self.current_scene.render(&self.buffer, self.rows, self.cols, time);
         self.buffer.flush();
     }
 
@@ -80,6 +86,7 @@ pub fn main() !void {
     defer terminal.showCursor();
 
     terminal.hideCursor();
+    std.debug.print("\x1b[2J", .{});
 
     var tui = try TUI.init(allocator);
     defer tui.deinit();
@@ -105,8 +112,12 @@ pub fn main() !void {
             should_render = true;
         }
 
+        should_render = true;
+
         if (should_render) {
             try tui.render();
         }
+
+        std.time.sleep(16_000_000);
     }
 }

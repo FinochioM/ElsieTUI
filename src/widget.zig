@@ -2,6 +2,7 @@ const std = @import("std");
 const style_mod = @import("style.zig");
 const Buffer = @import("buffer.zig").Buffer;
 const Color = @import("color.zig").Color;
+const animation_mod = @import("animation.zig");
 
 pub const Rect = struct {
     x: u16,
@@ -85,6 +86,19 @@ fn calculateBrightness(color: Color) f32 {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
+fn applyAnimation(gradient: anytype, animation: animation_mod.AnimationType, time: f32, col: u16, row: u16, total_height: u16, total_width: u16) Color {
+    const base_color = calculateGradientColor(gradient, col, row, total_height, total_width);
+    const factor = animation_mod.calculateAnimationFactor(animation, time);
+
+    return switch (gradient) {
+        .Solid => base_color,
+        .VerticalGradient => |grad| grad.top.lerp(grad.bottom, factor),
+        .HorizontalGradient => |grad| grad.left.lerp(grad.right, factor),
+        .DiagonalGradient => |grad| grad.top_left.lerp(grad.bottom_right, factor),
+        .RadialGradient => |grad| grad.center.lerp(grad.edge, factor),
+    };
+}
+
 fn getBorderChars(style: style_mod.BorderStyle) BorderChars {
     return switch (style) {
         .Single => .{
@@ -143,7 +157,7 @@ pub const Box = struct {
         };
     }
 
-    pub fn draw(self: Box, buffer: *Buffer) !void {
+    pub fn draw(self: Box, buffer: *Buffer, time: f32) !void {
         const x = self.rect.x;
         const y = self.rect.y;
         const w = self.rect.width;
@@ -155,7 +169,10 @@ pub const Box = struct {
             try buffer.writeFmt("\x1b[{};{}H", .{ y, x });
             var col: u16 = 0;
             while (col < w) : (col += 1) {
-                const color = calculateGradientColor(border, col, 0, h, w);
+                const color = switch (self.style.border_animation) {
+                    .None => calculateGradientColor(border, col, 0, h, w),
+                    else => applyAnimation(border, self.style.border_animation, time, col, 0, h, w),
+                };
                 try color.toFgEscape(buffer);
 
                 if (col == 0) {
@@ -177,11 +194,17 @@ pub const Box = struct {
 
             var row: u16 = 1;
             while (row < h - 1) : (row += 1) {
-                const left_color = calculateGradientColor(border, 0, row, h, w);
+                const left_color = switch (self.style.border_animation) {
+                    .None => calculateGradientColor(border, 0, row, h, w),
+                    else => applyAnimation(border, self.style.border_animation, time, 0, row, h, w),
+                };
                 try left_color.toFgEscape(buffer);
                 try buffer.writeFmt("\x1b[{};{}H{s}", .{ y + row, x, chars.vertical });
 
-                const right_color = calculateGradientColor(border, w - 1, row, h, w);
+                const right_color = switch (self.style.border_animation) {
+                    .None => calculateGradientColor(border, w - 1, row, h, w),
+                    else => applyAnimation(border, self.style.border_animation, time, w - 1, row, h, w),
+                };
                 try right_color.toFgEscape(buffer);
                 try buffer.writeFmt("\x1b[{};{}H{s}", .{ y + row, x + w - 1, chars.vertical });
             }
@@ -189,7 +212,10 @@ pub const Box = struct {
             try buffer.writeFmt("\x1b[{};{}H", .{ y + h - 1, x });
             col = 0;
             while (col < w) : (col += 1) {
-                const color = calculateGradientColor(border, col, h - 1, h, w);
+                const color = switch (self.style.border_animation) {
+                    .None => calculateGradientColor(border, col, h - 1, h, w),
+                    else => applyAnimation(border, self.style.border_animation, time, col, h - 1, h, w),
+                };
                 try color.toFgEscape(buffer);
 
                 if (col == 0) {
@@ -210,7 +236,10 @@ pub const Box = struct {
                 while (row < inner_height) : (row += 1) {
                     var col: u16 = 0;
                     while (col < inner_width) : (col += 1) {
-                        const fill_color = calculateGradientColor(fill, col, row, inner_height, inner_width);
+                        const fill_color = switch (self.style.fill_animation) {
+                            .None => calculateGradientColor(fill, col, row, inner_height, inner_width),
+                            else => applyAnimation(fill, self.style.fill_animation, time, col, row, inner_height, inner_width),
+                        };
                         try fill_color.toBgEscape(buffer);
 
                         const char = getShadingChar(self.style.fill_shading, calculateBrightness(fill_color));
@@ -238,7 +267,8 @@ pub const Text = struct {
         };
     }
 
-    pub fn draw(self: Text, buffer: *Buffer) !void {
+    pub fn draw(self: Text, buffer: *Buffer, time: f32) !void {
+        _ = time;
         if (self.style.text_gradient) |gradient| {
             var i: usize = 0;
             while (i < self.content.len) : (i += 1) {
@@ -294,13 +324,16 @@ pub const List = struct {
         return result;
     }
 
-    pub fn draw(self: List, buffer: *Buffer) !void {
+    pub fn draw(self: List, buffer: *Buffer, time: f32) !void {
+        _ = time;
         const x = self.rect.x;
         const y = self.rect.y;
 
         var i: usize = 0;
         while (i < self.items.len) : (i += 1) {
             if (i >= self.rect.height) break;
+
+            try buffer.writeFmt("\x1b[{};{}H", .{ y + i, x });
 
             if (self.style.fill) |fill| {
                 if (self.parent_rect) |parent| {
@@ -354,8 +387,6 @@ pub const List = struct {
                             try buffer.write("\x1b[7m");
                         }
 
-                        try buffer.writeFmt("\x1b[{};{}H", .{ y + i, x + col });
-
                         if (col == 0) {
                             try buffer.write(" ");
                         } else if (col <= item_text.len) {
@@ -376,7 +407,7 @@ pub const List = struct {
                         try buffer.write("\x1b[7m");
                     }
 
-                    try buffer.writeFmt("\x1b[{};{}H ", .{ y + i, x });
+                    try buffer.write(" ");
 
                     while (col < item_text.len) : (col += 1) {
                         const text_color = switch (text_gradient) {
@@ -414,7 +445,7 @@ pub const List = struct {
                         try buffer.write("\x1b[7m");
                     }
 
-                    try buffer.writeFmt("\x1b[{};{}H {s}", .{ y + i, x, self.items[i] });
+                    try buffer.writeFmt(" {s}", .{self.items[i]});
 
                     if (i == self.selected) {
                         try buffer.write("\x1b[27m");
@@ -460,7 +491,8 @@ pub const TextInput = struct {
         self.content.deinit();
     }
 
-    pub fn draw(self: TextInput, buffer: *Buffer) !void {
+    pub fn draw(self: TextInput, buffer: *Buffer, time: f32) !void {
+        _ = time;
         const x = self.rect.x;
         const y = self.rect.y;
 

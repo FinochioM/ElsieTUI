@@ -9,7 +9,7 @@ pub const Scene = struct {
     vtable: *const VTable,
 
     pub const VTable = struct {
-        render: *const fn (ptr: *anyopaque, buffer: *Buffer, rows: u16, cols: u16) anyerror!void,
+        render: *const fn (ptr: *anyopaque, buffer: *Buffer, rows: u16, cols: u16, time: f32) anyerror!void,
         handleInput: *const fn (ptr: *anyopaque, key: input.Key) anyerror!void,
         deinit: *const fn (ptr: *anyopaque) void,
     };
@@ -20,9 +20,9 @@ pub const Scene = struct {
         _ = ptr_info;
 
         const gen = struct {
-            fn render(ptr: *anyopaque, buffer: *Buffer, rows: u16, cols: u16) anyerror!void {
+            fn render(ptr: *anyopaque, buffer: *Buffer, rows: u16, cols: u16, time: f32) anyerror!void {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
-                return self.render(buffer, rows, cols);
+                return self.render(buffer, rows, cols, time);
             }
 
             fn handleInput(ptr: *anyopaque, key: input.Key) !void {
@@ -46,8 +46,8 @@ pub const Scene = struct {
         };
     }
 
-    pub fn render(self: Scene, buffer: *Buffer, rows: u16, cols: u16) !void {
-        return self.vtable.render(self.ptr, buffer, rows, cols);
+    pub fn render(self: Scene, buffer: *Buffer, rows: u16, cols: u16, time: f32) !void {
+        return self.vtable.render(self.ptr, buffer, rows, cols, time);
     }
 
     pub fn handleInput(self: Scene, key: input.Key) !void {

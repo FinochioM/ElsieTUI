@@ -1,4 +1,5 @@
 const Color = @import("color.zig").Color;
+const AnimationType = @import("animation.zig").AnimationType;
 
 pub const Style = struct {
     border: ?BorderColor,
@@ -6,6 +7,9 @@ pub const Style = struct {
     fill: ?Fill,
     text_gradient: ?TextGradient,
     fill_shading: Shading,
+    border_animation: AnimationType,
+    fill_animation: AnimationType,
+    text_animation: AnimationType,
 
     pub fn init() Style {
         return Style{
@@ -14,6 +18,9 @@ pub const Style = struct {
             .fill = null,
             .fill_shading = .None,
             .text_gradient = null,
+            .border_animation = .None,
+            .fill_animation = .None,
+            .text_animation = .None,
         };
     }
 
@@ -44,6 +51,24 @@ pub const Style = struct {
     pub fn withFillShading(self: Style, fill_shading: Shading) Style {
         var result = self;
         result.fill_shading = fill_shading;
+        return result;
+    }
+
+    pub fn withBorderAnimation(self: Style, anim: AnimationType) Style {
+        var result = self;
+        result.border_animation = anim;
+        return result;
+    }
+
+    pub fn withFillAnimation(self: Style, anim: AnimationType) Style {
+        var result = self;
+        result.fill_animation = anim;
+        return result;
+    }
+
+    pub fn withTextAnimation(self: Style, anim: AnimationType) Style {
+        var result = self;
+        result.text_animation = anim;
         return result;
     }
 };

@@ -36,24 +36,23 @@ pub const MenuScene = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn render(self: *MenuScene, buffer: *Buffer, rows: u16, cols: u16) !void {
-        try buffer.write("\x1b[2J");
-
+    pub fn render(self: *MenuScene, buffer: *Buffer, rows: u16, cols: u16, time: f32) !void {
         const main_box_style = style_mod.Style.init()
-            .withBorder(.{ .VerticalGradient = .{ .top = Color.Red, .bottom = Color.Blue } });
+            .withBorder(.{ .VerticalGradient = .{ .top = Color.Red, .bottom = Color.Blue } })
+            .withBorderAnimation(.{ .Pulse = .{ .speed = 1.0 } });
         const main_box = widget.Box.init(widget.Rect{ .x = 1, .y = 1, .width = cols, .height = rows }, "ElsieTUI - Main Menu", main_box_style);
-        try main_box.draw(buffer);
+        try main_box.draw(buffer, time);
 
         const menu_box_style = style_mod.Style.init()
             .withBorder(.{ .Solid = Color.Cyan })
             .withFill(.{ .HorizontalGradient = .{ .left = Color.Black, .right = Color.White } })
             .withFillShading(.Block);
         const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", menu_box_style);
-        try menu_box.draw(buffer);
+        try menu_box.draw(buffer, time);
 
         try buffer.write("\x1b[0m");
 
-        try self.list.draw(buffer);
+        try self.list.draw(buffer, time);
 
         try buffer.write("\x1b[");
         try buffer.writeFmt("{}", .{rows - 1});
