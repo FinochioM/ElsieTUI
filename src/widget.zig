@@ -10,6 +10,16 @@ pub const Rect = struct {
     height: u16,
 };
 
+//helpers
+const BorderChars = struct {
+    top_left: []const u8,
+    top_right: []const u8,
+    bottom_left: []const u8,
+    bottom_right: []const u8,
+    horizontal: []const u8,
+    vertical: []const u8,
+};
+
 fn calculateGradientColor(gradient: anytype, col: u16, row: u16, total_height: u16, total_width: u16) Color {
     return switch (gradient) {
         .Solid => |color| color,
@@ -40,64 +50,90 @@ fn calculateGradientColor(gradient: anytype, col: u16, row: u16, total_height: u
     };
 }
 
+fn getShadingChar(shading: style_mod.Shading, brightness: f32) []const u8 {
+    return switch (shading) {
+        .None => " ",
+        .Light => {
+            if (brightness < 0.25) return "░";
+            if (brightness < 0.5) return "▒";
+            if (brightness < 0.75) return "▓";
+            return "█";
+        },
+        .Stripple => {
+            if (brightness < 0.25) return "·";
+            if (brightness < 0.5) return "∘";
+            if (brightness < 0.75) return "○";
+            return "●";
+        },
+        .Block => {
+            if (brightness < 0.125) return "▁";
+            if (brightness < 0.25) return "▂";
+            if (brightness < 0.375) return "▃";
+            if (brightness < 0.5) return "▄";
+            if (brightness < 0.625) return "▅";
+            if (brightness < 0.75) return "▆";
+            if (brightness < 0.875) return "▇";
+            return "█";
+        },
+    };
+}
+
+fn calculateBrightness(color: Color) f32 {
+    const r = @as(f32, @floatFromInt(color.r)) / 255.0;
+    const g = @as(f32, @floatFromInt(color.g)) / 255.0;
+    const b = @as(f32, @floatFromInt(color.b)) / 255.0;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+fn getBorderChars(style: style_mod.BorderStyle) BorderChars {
+    return switch (style) {
+        .Single => .{
+            .top_left = "┌",
+            .top_right = "┐",
+            .bottom_left = "└",
+            .bottom_right = "┘",
+            .horizontal = "─",
+            .vertical = "│",
+        },
+        .Double => .{
+            .top_left = "╔",
+            .top_right = "╗",
+            .bottom_left = "╚",
+            .bottom_right = "╝",
+            .horizontal = "═",
+            .vertical = "║",
+        },
+        .Rounded => .{
+            .top_left = "╭",
+            .top_right = "╮",
+            .bottom_left = "╰",
+            .bottom_right = "╯",
+            .horizontal = "─",
+            .vertical = "│",
+        },
+        .Thick => .{
+            .top_left = "┏",
+            .top_right = "┓",
+            .bottom_left = "┗",
+            .bottom_right = "┛",
+            .horizontal = "━",
+            .vertical = "┃",
+        },
+        .Dotted => .{
+            .top_left = "┌",
+            .top_right = "┐",
+            .bottom_left = "└",
+            .bottom_right = "┘",
+            .horizontal = "╌",
+            .vertical = "╎",
+        },
+    };
+}
+
 pub const Box = struct {
     rect: Rect,
     title: []const u8,
     style: style_mod.Style,
-
-    const BorderChars = struct {
-        top_left: []const u8,
-        top_right: []const u8,
-        bottom_left: []const u8,
-        bottom_right: []const u8,
-        horizontal: []const u8,
-        vertical: []const u8,
-    };
-
-    fn getBorderChars(style: style_mod.BorderStyle) BorderChars {
-        return switch (style) {
-            .Single => .{
-                .top_left = "┌",
-                .top_right = "┐",
-                .bottom_left = "└",
-                .bottom_right = "┘",
-                .horizontal = "─",
-                .vertical = "│",
-            },
-            .Double => .{
-                .top_left = "╔",
-                .top_right = "╗",
-                .bottom_left = "╚",
-                .bottom_right = "╝",
-                .horizontal = "═",
-                .vertical = "║",
-            },
-            .Rounded => .{
-                .top_left = "╭",
-                .top_right = "╮",
-                .bottom_left = "╰",
-                .bottom_right = "╯",
-                .horizontal = "─",
-                .vertical = "│",
-            },
-            .Thick => .{
-                .top_left = "┏",
-                .top_right = "┓",
-                .bottom_left = "┗",
-                .bottom_right = "┛",
-                .horizontal = "━",
-                .vertical = "┃",
-            },
-            .Dotted => .{
-                .top_left = "┌",
-                .top_right = "┐",
-                .bottom_left = "└",
-                .bottom_right = "┘",
-                .horizontal = "╌",
-                .vertical = "╎",
-            },
-        };
-    }
 
     pub fn init(rect: Rect, title: []const u8, style: style_mod.Style) Box {
         return Box{
@@ -176,7 +212,9 @@ pub const Box = struct {
                     while (col < inner_width) : (col += 1) {
                         const fill_color = calculateGradientColor(fill, col, row, inner_height, inner_width);
                         try fill_color.toBgEscape(buffer);
-                        try buffer.writeFmt("\x1b[{};{}H ", .{ y + 1 + row, x + 1 + col });
+
+                        const char = getShadingChar(self.style.fill_shading, calculateBrightness(fill_color));
+                        try buffer.writeFmt("\x1b[{};{}H{s}", .{ y + 1 + row, x + 1 + col, char });
                     }
                 }
                 try buffer.write("\x1b[0m");

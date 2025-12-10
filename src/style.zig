@@ -5,12 +5,14 @@ pub const Style = struct {
     border_style: BorderStyle,
     fill: ?Fill,
     text_gradient: ?TextGradient,
+    fill_shading: Shading,
 
     pub fn init() Style {
         return Style{
             .border = null,
             .border_style = .Single,
             .fill = null,
+            .fill_shading = .None,
             .text_gradient = null,
         };
     }
@@ -36,6 +38,12 @@ pub const Style = struct {
     pub fn withBorderStyle(self: Style, border_style: BorderStyle) Style {
         var result = self;
         result.border_style = border_style;
+        return result;
+    }
+
+    pub fn withFillShading(self: Style, fill_shading: Shading) Style {
+        var result = self;
+        result.fill_shading = fill_shading;
         return result;
     }
 };
@@ -70,4 +78,11 @@ pub const BorderStyle = union(enum) {
     Rounded,
     Thick,
     Dotted,
+};
+
+pub const Shading = union(enum) {
+    None,
+    Light,
+    Stripple,
+    Block,
 };

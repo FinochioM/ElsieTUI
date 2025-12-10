@@ -46,7 +46,8 @@ pub const MenuScene = struct {
 
         const menu_box_style = style_mod.Style.init()
             .withBorder(.{ .Solid = Color.Cyan })
-            .withBorderStyle(.Single);
+            .withFill(.{ .HorizontalGradient = .{ .left = Color.Black, .right = Color.White } })
+            .withFillShading(.Block);
         const menu_box = widget.Box.init(widget.Rect{ .x = 8, .y = 6, .width = 34, .height = 6 }, "Menu", menu_box_style);
         try menu_box.draw(buffer);
 
